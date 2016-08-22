@@ -30,203 +30,207 @@ using System.Text;
 
 namespace ZXing.Client.Result
 {
-   /// <summary>
-   /// Parses strings of digits that represent a RSS Extended code.
-   /// </summary>
-   /// <author>Antonio Manuel Benjumea Conde, Servinform, S.A.</author>
-   /// <author>Agustín Delgado, Servinform, S.A.</author>
-   public class ExpandedProductResultParser : ResultParser
-   {
-      override public ParsedResult parse(ZXing.Result result)
-      {
-         BarcodeFormat format = result.BarcodeFormat;
-         if (format != BarcodeFormat.RSS_EXPANDED)
-         {
-            // ExtendedProductParsedResult NOT created. Not a RSS Expanded barcode
-            return null;
-         }
-         String rawText = result.Text;
+    /// <summary>
+    /// Parses strings of digits that represent a RSS Extended code.
+    /// </summary>
+    /// <author>Antonio Manuel Benjumea Conde, Servinform, S.A.</author>
+    /// <author>Agustín Delgado, Servinform, S.A.</author>
+    public class ExpandedProductResultParser : ResultParser
+    {
+        override public ParsedResult parse(ZXing.Result result)
+        {
+            BarcodeFormat format = result.BarcodeFormat;
+            if (format != BarcodeFormat.RSS_EXPANDED)
+            {
+                // ExtendedProductParsedResult NOT created. Not a RSS Expanded barcode
+                return null;
+            }
+            var rawText = result.Text;
 
-         String productID = null;
-         String sscc = null;
-         String lotNumber = null;
-         String productionDate = null;
-         String packagingDate = null;
-         String bestBeforeDate = null;
-         String expirationDate = null;
-         String weight = null;
-         String weightType = null;
-         String weightIncrement = null;
-         String price = null;
-         String priceIncrement = null;
-         String priceCurrency = null;
-         var uncommonAIs = new Dictionary<String, String>();
+            string productID = null;
+            string sscc = null;
+            string lotNumber = null;
+            string productionDate = null;
+            string packagingDate = null;
+            string bestBeforeDate = null;
+            string expirationDate = null;
+            string weight = null;
+            string weightType = null;
+            string weightIncrement = null;
+            string price = null;
+            string priceIncrement = null;
+            string priceCurrency = null;
+            var uncommonAIs = new Dictionary<string, string>();
 
-         int i = 0;
+            int i = 0;
 
-         while (i < rawText.Length)
-         {
-            String ai = findAIvalue(i, rawText);
-            if (ai == null)
+            while (i < rawText.Length)
             {
-               // Error. Code doesn't match with RSS expanded pattern
-               // ExtendedProductParsedResult NOT created. Not match with RSS Expanded pattern
-               return null;
-            }
-            i += ai.Length + 2;
-            String value = findValue(i, rawText);
-            i += value.Length;
+                var ai = findAIvalue(i, rawText);
+                if (ai == null)
+                {
+                    // Error. Code doesn't match with RSS expanded pattern
+                    // ExtendedProductParsedResult NOT created. Not match with RSS Expanded pattern
+                    return null;
+                }
+                i += ai.Length + 2;
+                var value = findValue(i, rawText);
+                i += value.Length;
 
-            if ("00".Equals(ai))
-            {
-               sscc = value;
+                switch (ai)
+                {
+                    case "00":
+                        sscc = value;
+                        break;
+                    case "01":
+                        productID = value;
+                        break;
+                    case "10":
+                        lotNumber = value;
+                        break;
+                    case "11":
+                        productionDate = value;
+                        break;
+                    case "13":
+                        packagingDate = value;
+                        break;
+                    case "15":
+                        bestBeforeDate = value;
+                        break;
+                    case "17":
+                        expirationDate = value;
+                        break;
+                    case "3100":
+                    case "3101":
+                    case "3102":
+                    case "3103":
+                    case "3104":
+                    case "3105":
+                    case "3106":
+                    case "3107":
+                    case "3108":
+                    case "3109":
+                        weight = value;
+                        weightType = ExpandedProductParsedResult.KILOGRAM;
+                        weightIncrement = ai.Substring(3);
+                        break;
+                    case "3200":
+                    case "3201":
+                    case "3202":
+                    case "3203":
+                    case "3204":
+                    case "3205":
+                    case "3206":
+                    case "3207":
+                    case "3208":
+                    case "3209":
+                        weight = value;
+                        weightType = ExpandedProductParsedResult.POUND;
+                        weightIncrement = ai.Substring(3);
+                        break;
+                    case "3920":
+                    case "3921":
+                    case "3922":
+                    case "3923":
+                        price = value;
+                        priceIncrement = ai.Substring(3);
+                        break;
+                    case "3930":
+                    case "3931":
+                    case "3932":
+                    case "3933":
+                        if (value.Length < 4)
+                        {
+                            // The value must have more of 3 symbols (3 for currency and
+                            // 1 at least for the price)
+                            // ExtendedProductParsedResult NOT created. Not match with RSS Expanded pattern
+                            return null;
+                        }
+                        price = value.Substring(3);
+                        priceCurrency = value.Substring(0, 3);
+                        priceIncrement = ai.Substring(3);
+                        break;
+                    default:
+                        uncommonAIs[ai] = value;
+                        break;
+                }
             }
-            else if ("01".Equals(ai))
-            {
-               productID = value;
-            }
-            else if ("10".Equals(ai))
-            {
-               lotNumber = value;
-            }
-            else if ("11".Equals(ai))
-            {
-               productionDate = value;
-            }
-            else if ("13".Equals(ai))
-            {
-               packagingDate = value;
-            }
-            else if ("15".Equals(ai))
-            {
-               bestBeforeDate = value;
-            }
-            else if ("17".Equals(ai))
-            {
-               expirationDate = value;
-            }
-            else if ("3100".Equals(ai) || "3101".Equals(ai)
-              || "3102".Equals(ai) || "3103".Equals(ai)
-              || "3104".Equals(ai) || "3105".Equals(ai)
-              || "3106".Equals(ai) || "3107".Equals(ai)
-              || "3108".Equals(ai) || "3109".Equals(ai))
-            {
-               weight = value;
-               weightType = ExpandedProductParsedResult.KILOGRAM;
-               weightIncrement = ai.Substring(3);
-            }
-            else if ("3200".Equals(ai) || "3201".Equals(ai)
-              || "3202".Equals(ai) || "3203".Equals(ai)
-              || "3204".Equals(ai) || "3205".Equals(ai)
-              || "3206".Equals(ai) || "3207".Equals(ai)
-              || "3208".Equals(ai) || "3209".Equals(ai))
-            {
-               weight = value;
-               weightType = ExpandedProductParsedResult.POUND;
-               weightIncrement = ai.Substring(3);
-            }
-            else if ("3920".Equals(ai) || "3921".Equals(ai)
-              || "3922".Equals(ai) || "3923".Equals(ai))
-            {
-               price = value;
-               priceIncrement = ai.Substring(3);
-            }
-            else if ("3930".Equals(ai) || "3931".Equals(ai)
-              || "3932".Equals(ai) || "3933".Equals(ai))
-            {
-               if (value.Length < 4)
-               {
-                  // The value must have more of 3 symbols (3 for currency and
-                  // 1 at least for the price)
-                  // ExtendedProductParsedResult NOT created. Not match with RSS Expanded pattern
-                  return null;
-               }
-               price = value.Substring(3);
-               priceCurrency = value.Substring(0, 3);
-               priceIncrement = ai.Substring(3);
-            }
-            else
-            {
-               // No match with common AIs
-               uncommonAIs[ai] = value;
-            }
-         }
 
-         return new ExpandedProductParsedResult(rawText,
-                                                productID,
-                                                sscc,
-                                                lotNumber,
-                                                productionDate,
-                                                packagingDate,
-                                                bestBeforeDate,
-                                                expirationDate,
-                                                weight,
-                                                weightType,
-                                                weightIncrement,
-                                                price,
-                                                priceIncrement,
-                                                priceCurrency,
-                                                uncommonAIs);
-      }
+            return new ExpandedProductParsedResult(rawText,
+                                                   productID,
+                                                   sscc,
+                                                   lotNumber,
+                                                   productionDate,
+                                                   packagingDate,
+                                                   bestBeforeDate,
+                                                   expirationDate,
+                                                   weight,
+                                                   weightType,
+                                                   weightIncrement,
+                                                   price,
+                                                   priceIncrement,
+                                                   priceCurrency,
+                                                   uncommonAIs);
+        }
 
-      private static String findAIvalue(int i, String rawText)
-      {
-         char c = rawText[i];
-         // First character must be a open parenthesis.If not, ERROR
-         if (c != '(')
-         {
-            return null;
-         }
+        private static string findAIvalue(int i, string rawText)
+        {
+            var c = rawText[i];
+            // First character must be a open parenthesis.If not, ERROR
+            if (c != '(')
+            {
+                return null;
+            }
 
-         var rawTextAux = rawText.Substring(i + 1);
-         var buf = new StringBuilder();
+            var rawTextAux = rawText.Substring(i + 1);
+            var buf = new StringBuilder();
 
-         for (int index = 0; index < rawTextAux.Length; index++)
-         {
-            char currentChar = rawTextAux[index];
-            if (currentChar == ')')
+            for (int index = 0; index < rawTextAux.Length; index++)
             {
-               return buf.ToString();
+                var currentChar = rawTextAux[index];
+                if (currentChar == ')')
+                {
+                    return buf.ToString();
+                }
+                else if (currentChar >= '0' && currentChar <= '9')
+                {
+                    buf.Append(currentChar);
+                }
+                else
+                {
+                    return null;
+                }
             }
-            else if (currentChar >= '0' && currentChar <= '9')
-            {
-               buf.Append(currentChar);
-            }
-            else
-            {
-               return null;
-            }
-         }
-         return buf.ToString();
-      }
+            return buf.ToString();
+        }
 
-      private static String findValue(int i, String rawText)
-      {
-         var buf = new StringBuilder();
-         var rawTextAux = rawText.Substring(i);
+        private static string findValue(int i, string rawText)
+        {
+            var buf = new StringBuilder();
+            var rawTextAux = rawText.Substring(i);
 
-         for (int index = 0; index < rawTextAux.Length; index++)
-         {
-            char c = rawTextAux[index];
-            if (c == '(')
+            for (int index = 0; index < rawTextAux.Length; index++)
             {
-               // We look for a new AI. If it doesn't exist (ERROR), we coninue
-               // with the iteration
-               if (findAIvalue(index, rawTextAux) == null)
-               {
-                  buf.Append('(');
-               }
-               else
-               {
-                  break;
-               }
+                var c = rawTextAux[index];
+                if (c == '(')
+                {
+                    // We look for a new AI. If it doesn't exist (ERROR), we coninue
+                    // with the iteration
+                    if (findAIvalue(index, rawTextAux) == null)
+                    {
+                        buf.Append('(');
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    buf.Append(c);
+                }
             }
-            else
-            {
-               buf.Append(c);
-            }
-         }
-         return buf.ToString();
-      }
-   }
+            return buf.ToString();
+        }
+    }
 }
